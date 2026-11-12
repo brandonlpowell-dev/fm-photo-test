@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>First Mate Photo Test</title>
+<meta name="theme-color" content="#c8510f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FM Test">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+/* One narrow column for a phone in one hand; big tap targets; numbered test steps. System fonts so it looks right offline. */
+:root {
+  --bg: #f4f5f2; --panel: #ffffff; --fg: #19211d; --muted: #5b665f; --line: #d9ddd6;
+  --accent: #c8510f; --accent-ink: #ffffff; --ok: #1f7a45; --warn: #a86a00; --bad: #b3261e; --chip: #eceee9;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-data: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #121714; --panel: #1b221e; --fg: #e8ece8; --muted: #9aa69e; --line: #2d3731;
+    --accent: #f07a35; --accent-ink: #1a0d05; --ok: #5cc98b; --warn: #e6b04a; --bad: #f2867d; --chip: #252e29; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 16px; line-height: 1.45; -webkit-text-size-adjust: 100%; }
+[hidden] { display: none !important; }
+.wrap { max-width: 640px; margin: 0 auto; padding-top: max(16px, env(safe-area-inset-top, 0px)); padding-bottom: max(48px, env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 20px; }
+h1 { font-size: 1.55rem; font-weight: 700; margin: 0; }
+h2 { font-size: 1.12rem; font-weight: 600; margin: 0; display: flex; gap: 10px; align-items: baseline; }
+h2 .n { font-family: var(--font-data); font-size: .85rem; color: var(--accent); }
+p { margin: 0; }
+.sub, .note { color: var(--muted); font-size: .92rem; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.stat b { display: block; font-family: var(--font-data); font-size: 1.2rem; font-weight: 500; }
+.stat span { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+button { font: inherit; font-weight: 600; min-height: 52px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--chip); color: var(--fg); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; -webkit-tap-highlight-color: transparent; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); flex: 1 1 100%; font-size: 1.05rem; }
+button.small { min-height: 40px; padding: 0 12px; font-size: .9rem; }
+button:disabled { opacity: .45; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.ph { position: relative; border-radius: 8px; overflow: hidden; border: 2px solid transparent; background: var(--chip); aspect-ratio: 1; padding: 0; min-height: 0; }
+.ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ph .tag { position: absolute; left: 4px; bottom: 4px; font-family: var(--font-data); font-size: .66rem; background: rgba(0,0,0,.62); color: #fff; padding: 1px 5px; border-radius: 4px; }
+.ph.sel { border-color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.line { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.line-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.strip { display: flex; gap: 4px; overflow-x: auto; }
+.strip img { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; flex: none; }
+.status { font-size: .95rem; padding: 10px 12px; border-radius: 8px; background: var(--chip); }
+.status.ok { color: var(--ok); } .status.warn { color: var(--warn); } .status.bad { color: var(--bad); }
+.checks { display: flex; flex-direction: column; gap: 6px; font-size: .95rem; }
+.checks div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.checks b { font-weight: 600; text-align: right; }
+.yes { color: var(--ok); } .no { color: var(--bad); } .meh { color: var(--warn); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.card > label { flex: none; }
+label { font-size: .9rem; color: var(--muted); display: flex; flex-direction: column; gap: 4px; flex: 1 1 140px; }
+input[type=text], input[type=number] { font: inherit; font-size: 16px; min-height: 48px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); width: 100%; }
+textarea { font-family: var(--font-data); font-size: 12px; width: 100%; min-height: 160px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 8px; }
+.log { display: flex; flex-direction: column; gap: 4px; font-size: .9rem; }
+.log div { display: flex; gap: 10px; }
+.log time { font-family: var(--font-data); color: var(--muted); font-size: .82rem; min-width: 5.5em; }
+details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+.confirm { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--bad); border-radius: 8px; margin-top: 8px; }
+/* Full-screen layers: in-tool camera and photo viewer */
+.layer { position: fixed; inset: 0; background: #000; z-index: 20; display: flex; flex-direction: column; color: #fff; }
+.layer-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: max(8px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px)); font-size: .85rem; font-family: var(--font-data); }
+.layer-bar button { background: #2b2b2b; color: #fff; border-color: #444; min-height: 44px; }
+.cam-video { flex: 1; min-height: 0; width: 100%; object-fit: cover; background: #000; }
+.cam-controls { display: flex; align-items: center; justify-content: space-between; padding: 16px max(20px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); gap: 12px; }
+.cam-thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; background: #222; border: 2px solid #444; }
+.shutter { width: 78px; height: 78px; border-radius: 50%; border: 5px solid #fff; background: rgba(255,255,255,.2); min-height: 0; padding: 0; }
+.shutter:active { background: #fff; }
+.cam-done { min-width: 88px; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.viewer-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
+.viewer-scroll img { display: block; max-width: none; margin: 0 auto; }
+.viewer-scroll img.fit { width: 100%; height: auto; }
+@media (prefers-reduced-motion: reduce) { .flash { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>First Mate photo test</h1>
+    <p class="sub">Standalone test (no company data). Main goal: prove photos survive a force close when the tool runs from the home screen, and try a camera that stays open.</p>
+  </header>
+
+  <div class="stats" aria-live="polite">
+    <div class="stat"><b id="s-photos">0</b><span>Photos on phone</span></div>
+    <div class="stat"><b id="s-mb">0 MB</b><span>Space used</span></div>
+    <div class="stat"><b id="s-opens">1</b><span>Times opened</span></div>
+    <div class="stat"><b id="s-time">Not started</b><span>Test time, from first photo</span></div>
+  </div>
+
+  <section class="card">
+    <h2><span class="n">0</span>Setup check</h2>
+    <div class="checks">
+      <div><span>Running from home screen</span><b id="c-standalone">…</b></div>
+      <div><span>Works offline</span><b id="c-offline">…</b></div>
+      <div><span>Protected storage</span><b id="c-persist">…</b></div>
+      <div><span>Photos kept from last time</span><b id="c-kept">…</b></div>
+    </div>
+    <p class="note" id="setup-help">To install: in Safari tap Share, then Add to Home Screen. Then open it from the new FM Test icon, not from Safari.</p>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">1</span>Take or pick photos</h2>
+    <div class="btns">
+      <button class="primary" id="b-live">Camera (stays open)</button>
+      <button id="b-cam">Phone camera</button>
+      <button id="b-lib">Pick photos</button>
+    </div>
+    <p class="note">Camera (stays open) keeps shooting until you tap Done. Phone camera uses the iPhone camera app (one shot at a time, best low-light). Pick photos uses your camera roll.</p>
+    <input type="file" id="i-cam" accept="image/*" capture="environment" hidden>
+    <input type="file" id="i-lib" accept="image/*" multiple hidden>
+    <div class="status" id="cap-status">No photos yet.</div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">2</span>Use same photo</h2>
+    <p class="note">Add lines, tap Attach on one, then tap photos to attach them. One photo can back many lines; it's stored once.</p>
+    <div class="chips" id="line-chips"></div>
+    <div class="status" id="line-status">No lines yet.</div>
+    <div id="line-list"></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">3</span>Force close test</h2>
+    <p class="note">With a few photos taken: swipe up and force close the app, then open it again from the home screen icon. Repeat in airplane mode, and after restarting the phone.</p>
+    <div class="status" id="persist-status">Checking…</div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">4</span>Heat and battery log</h2>
+    <div class="row">
+      <label for="i-batt">Battery %<input type="number" id="i-batt" inputmode="numeric" min="0" max="100" placeholder="e.g. 82"></label>
+      <label for="i-temp">Conditions<input type="text" id="i-temp" placeholder="e.g. 94°F, no AC"></label>
+    </div>
+    <div class="chips">
+      <button class="small" data-heat="Normal">Normal</button>
+      <button class="small" data-heat="Warm">Warm</button>
+      <button class="small" data-heat="Hot">Hot</button>
+      <button class="small" data-heat="Heat warning">Heat warning</button>
+      <button class="small" data-heat="Slowed down">Slowed down</button>
+      <button class="small" data-heat="Shut off">Shut off</button>
+    </div>
+    <div class="log" id="heat-log"></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">5</span>Send results</h2>
+    <label for="i-device">Device<input type="text" id="i-device" placeholder="e.g. iPhone 11, 2 years old"></label>
+    <label for="i-notes">Notes<input type="text" id="i-notes" placeholder="Photo quality, anything odd"></label>
+    <div class="btns"><button class="primary" id="b-copy">Copy results</button></div>
+    <p class="note">Copies a text summary (no photos). Paste it into your chat with Claude.</p>
+    <textarea id="results" readonly hidden aria-label="Results summary"></textarea>
+    <details>
+      <summary>Start over</summary>
+      <div class="confirm">
+        <p>Deletes every photo, line and log entry in this test on this phone. This can't be undone.</p>
+        <button id="b-clear">Delete all test data</button>
+      </div>
+    </details>
+  </section>
+</div>
+
+<div class="layer" id="cam" hidden>
+  <div class="layer-bar"><span id="cam-info">Starting camera…</span><span id="cam-count">0 taken</span></div>
+  <video class="cam-video" id="cam-video" playsinline muted autoplay></video>
+  <div class="flash" id="cam-flash"></div>
+  <div class="cam-controls">
+    <img class="cam-thumb" id="cam-thumb" alt="">
+    <button class="shutter" id="cam-shutter" aria-label="Take photo"></button>
+    <button class="cam-done" id="cam-done">Done</button>
+  </div>
+</div>
+
+<div class="layer" id="viewer" hidden>
+  <div class="layer-bar"><span id="viewer-info"></span><span class="btns"><button id="viewer-zoom">Zoom 2×</button><button id="viewer-close">Close</button></span></div>
+  <div class="viewer-scroll"><img id="viewer-img" alt="Full-size photo"></div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const MAX_EDGE = 3000, QUALITY = 0.85, THUMB = 240;
+  const LINE_PRESETS = ['Vanity', 'Sink', 'Mirror', 'Light', 'Toilet', 'Faucet', 'Shower'];
+  const state = { photos: [], lines: [], log: [], meta: {}, attachTo: null, urls: new Map(), zoom: 0, viewing: null, stream: null, liveCount: 0, liveRes: null };
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+  // ---------- On-device storage ----------
+  let idb;
+  const openDb = () => new Promise((res, rej) => {
+    const r = indexedDB.open('fm-photo-test', 1);
+    r.onupgradeneeded = () => { const d = r.result; ['photos', 'lines', 'log'].forEach((s) => d.createObjectStore(s, { keyPath: 'id' })); d.createObjectStore('meta', { keyPath: 'key' }); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  const tx = (store, mode, fn) => new Promise((res, rej) => {
+    const t = idb.transaction(store, mode);
+    const out = fn(t.objectStore(store));
+    t.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error || new Error('Storage full or blocked'));
+  });
+  const all = (s) => tx(s, 'readonly', (o) => o.getAll());
+  const put = (s, v) => tx(s, 'readwrite', (o) => { o.put(v); });
+  const del = (s, k) => tx(s, 'readwrite', (o) => { o.delete(k); });
+  const clearStore = (s) => tx(s, 'readwrite', (o) => { o.clear(); });
+  const setMeta = (key, value) => { state.meta[key] = value; return put('meta', { key, value }); };
+
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const fmtMB = (b) => (b / 1048576).toFixed(b < 10485760 ? 2 : 1) + ' MB';
+  const fmtKB = (b) => Math.round(b / 1024) + ' KB';
+  const clock = (d) => new Date(d).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+  function urlFor(p, kind) {
+    const key = p.id + kind;
+    if (state.urls.has(key)) return state.urls.get(key);
+    const blob = kind === 'full' ? p.blob : p.thumb;
+    if (!blob) return '';
+    const u = URL.createObjectURL(blob);
+    state.urls.set(key, u);
+    return u;
+  }
+
+  // ---------- Image processing ----------
+  async function decode(file) {
+    if ('createImageBitmap' in window) { try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch (e) { /* fall back */ } }
+    return await new Promise((res, rej) => {
+      const u = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(u); res(img); };
+      img.onerror = () => { URL.revokeObjectURL(u); rej(new Error('unreadable')); };
+      img.src = u;
+    });
+  }
+  const toBlob = (c, q) => new Promise((res) => c.toBlob((b) => res(b), 'image/jpeg', q));
+  async function makeJpeg(src, edge, q, w0, h0) {
+    w0 = w0 || src.width; h0 = h0 || src.height;
+    const s = Math.min(1, edge / Math.max(w0, h0));
+    const w = Math.round(w0 * s), h = Math.round(h0 * s);
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(src, 0, 0, w, h);
+    const b = await toBlob(c, q);
+    c.width = 0; c.height = 0;
+    return { blob: b, w, h };
+  }
+  async function startClock() {
+    if (!state.meta.sessionStart) await setMeta('sessionStart', Date.now());
+    if (!state.meta.persistAsked && navigator.storage && navigator.storage.persist) {
+      try { await setMeta('persisted', await navigator.storage.persist()); } catch (e) { /* ignore */ }
+      await setMeta('persistAsked', true);
+    }
+  }
+  async function savePhoto(src, mode, origBytes, origType, t0, w0, h0) {
+    const full = await makeJpeg(src, MAX_EDGE, QUALITY, w0, h0);
+    const th = await makeJpeg(src, THUMB, 0.7, w0, h0);
+    if (!full.blob) throw new Error('encode');
+    const p = { id: uid(), blob: full.blob, thumb: th.blob, w: full.w, h: full.h, srcW: w0 || src.width, srcH: h0 || src.height, bytes: full.blob.size, origBytes, origType, mode, createdAt: Date.now(), ms: Math.round(performance.now() - t0) };
+    await put('photos', p);
+    state.photos.push(p);
+    return p;
+  }
+  async function processFiles(files, mode) {
+    const list = Array.from(files || []);
+    if (!list.length) return;
+    await startClock();
+    let done = 0;
+    for (const f of list) {
+      setStatus('cap-status', `Saving photo ${done + 1} of ${list.length}…`);
+      const t0 = performance.now();
+      try {
+        const bmp = await decode(f);
+        const p = await savePhoto(bmp, mode, f.size, f.type || 'unknown', t0);
+        if (bmp.close) bmp.close();
+        done++;
+        setStatus('cap-status', `Saved ${done}. Last: ${p.w}×${p.h}, ${fmtKB(p.bytes)} (from ${fmtKB(p.origBytes)}), ${p.ms} ms.`, 'ok');
+      } catch (e) {
+        await setMeta('failedReads', (state.meta.failedReads || 0) + 1);
+        setStatus('cap-status', e && e.name === 'QuotaExceededError' ? 'The phone is out of space for photos.' : `One photo couldn't be read (${f.type || 'unknown type'}).`, 'bad');
+      }
+    }
+    render();
+  }
+  function setStatus(id, text, cls) { $(id).className = 'status' + (cls ? ' ' + cls : ''); $(id).textContent = text; }
+
+  // ---------- Camera that stays open ----------
+  async function openLive() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { setStatus('cap-status', 'This browser has no in-page camera. Use Phone camera.', 'bad'); return; }
+    $('cam').hidden = false;
+    state.liveCount = 0;
+    $('cam-count').textContent = '0 taken';
+    $('cam-thumb').removeAttribute('src');
+    try {
+      state.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 4032 }, height: { ideal: 3024 } } });
+      const v = $('cam-video');
+      v.srcObject = state.stream;
+      await v.play().catch(() => {});
+      await new Promise((r) => (v.videoWidth ? r() : v.addEventListener('loadedmetadata', r, { once: true })));
+      state.liveRes = `${v.videoWidth}×${v.videoHeight}`;
+      await setMeta('liveRes', state.liveRes);
+      $('cam-info').textContent = `Camera ${state.liveRes}`;
+      await startClock();
+    } catch (e) {
+      closeLive();
+      setStatus('cap-status', `Camera didn't start (${e && e.name ? e.name : 'error'}). Allow camera access, or use Phone camera.`, 'bad');
+    }
+  }
+  async function shoot() {
+    const v = $('cam-video');
+    if (!v.videoWidth) return;
+    const f = $('cam-flash');
+    f.style.opacity = '0.8'; setTimeout(() => { f.style.opacity = '0'; }, 120);
+    const t0 = performance.now();
+    try {
+      const p = await savePhoto(v, 'live', 0, 'camera frame', t0, v.videoWidth, v.videoHeight);
+      state.liveCount++;
+      $('cam-count').textContent = `${state.liveCount} taken`;
+      $('cam-thumb').src = urlFor(p, 'thumb');
+    } catch (e) {
+      $('cam-info').textContent = 'Could not save that photo';
+    }
+  }
+  function closeLive() {
+    if (state.stream) { state.stream.getTracks().forEach((t) => t.stop()); state.stream = null; }
+    $('cam-video').srcObject = null;
+    $('cam').hidden = true;
+    if (state.liveCount) {
+      const last = state.photos[state.photos.length - 1];
+      setStatus('cap-status', `Saved ${state.liveCount} from the open camera. Camera feed ${state.liveRes}; saved ${last.w}×${last.h}, ${fmtKB(last.bytes)}.`, 'ok');
+    }
+    render();
+  }
+  $('b-live').onclick = openLive;
+  $('cam-shutter').onclick = shoot;
+  $('cam-done').onclick = closeLive;
+  document.addEventListener('visibilitychange', () => { if (document.hidden && state.stream) closeLive(); });
+
+  // ---------- Rendering ----------
+  function render() {
+    const bytes = state.photos.reduce((a, p) => a + p.bytes, 0);
+    $('s-photos').textContent = state.photos.length;
+    $('s-mb').textContent = fmtMB(bytes);
+    $('s-opens').textContent = state.meta.opens || 1;
+
+    const grid = $('grid');
+    grid.replaceChildren();
+    const line = state.attachTo && state.lines.find((l) => l.id === state.attachTo);
+    state.photos.slice().reverse().forEach((p) => {
+      const b = document.createElement('button');
+      b.className = 'ph' + (line && line.photoIds.includes(p.id) ? ' sel' : '');
+      b.type = 'button';
+      b.setAttribute('aria-label', `Photo ${p.w} by ${p.h}`);
+      const img = document.createElement('img'); img.src = urlFor(p, 'thumb'); img.alt = '';
+      const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = (p.mode === 'live' ? 'open · ' : '') + fmtKB(p.bytes);
+      b.append(img, tag);
+      b.onclick = () => (state.attachTo ? toggleAttach(p.id) : openViewer(p));
+      grid.appendChild(b);
+    });
+
+    const chips = $('line-chips');
+    chips.replaceChildren();
+    LINE_PRESETS.forEach((name) => { const c = document.createElement('button'); c.className = 'small'; c.type = 'button'; c.textContent = '+ ' + name; c.onclick = () => addLine(name); chips.appendChild(c); });
+
+    const list = $('line-list');
+    list.replaceChildren();
+    state.lines.forEach((l) => {
+      const box = document.createElement('div'); box.className = 'line';
+      const head = document.createElement('div'); head.className = 'line-head';
+      const s = document.createElement('strong'); s.textContent = `${l.name} · ${l.photoIds.length} photo${l.photoIds.length === 1 ? '' : 's'}`;
+      const act = document.createElement('div'); act.className = 'btns';
+      const a = document.createElement('button'); a.className = 'small'; a.type = 'button'; a.textContent = state.attachTo === l.id ? 'Done' : 'Attach';
+      a.onclick = () => { state.attachTo = state.attachTo === l.id ? null : l.id; render(); };
+      const d = document.createElement('button'); d.className = 'small'; d.type = 'button'; d.textContent = 'Remove';
+      d.onclick = async () => { await del('lines', l.id); state.lines = state.lines.filter((x) => x.id !== l.id); if (state.attachTo === l.id) state.attachTo = null; render(); };
+      act.append(a, d); head.append(s, act);
+      const strip = document.createElement('div'); strip.className = 'strip';
+      l.photoIds.forEach((pid) => { const p = state.photos.find((x) => x.id === pid); if (!p) return; const i = document.createElement('img'); i.src = urlFor(p, 'thumb'); i.alt = ''; strip.appendChild(i); });
+      box.append(head, strip); list.appendChild(box);
+    });
+    const att = state.lines.reduce((a, l) => a + l.photoIds.length, 0);
+    const used = new Set(state.lines.flatMap((l) => l.photoIds)).size;
+    if (line) setStatus('line-status', `Tap photos above to attach them to ${line.name}, then tap Done.`, 'warn');
+    else setStatus('line-status', state.lines.length ? `${state.lines.length} lines · ${att} photo attachments · ${used} photo files used (each stored once).` : 'No lines yet.');
+
+    const log = $('heat-log');
+    log.replaceChildren();
+    state.log.slice().reverse().forEach((e) => {
+      const r = document.createElement('div'); const t = document.createElement('time'); t.textContent = clock(e.t);
+      const s = document.createElement('span'); s.textContent = [e.kind, e.battery ? e.battery + '%' : '', e.conditions, `${e.photos} photos`].filter(Boolean).join(' · ');
+      r.append(t, s); log.appendChild(r);
+    });
+  }
+  function renderChecks() {
+    const mark = (el, text, cls) => { $(el).textContent = text; $(el).className = cls; };
+    mark('c-standalone', standalone ? 'Yes' : 'No — open from the icon', standalone ? 'yes' : 'no');
+    $('setup-help').hidden = standalone;
+    const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+    mark('c-offline', sw ? 'Yes' : 'After next open', sw ? 'yes' : 'meh');
+    const ps = state.meta.persisted;
+    mark('c-persist', ps === true ? 'Granted' : ps === false ? 'Not granted' : 'Asked at first photo', ps === true ? 'yes' : ps === false ? 'meh' : '');
+    const lastCount = state.meta.lastCount || 0;
+    const opens = state.meta.opens || 1;
+    if (opens <= 1) mark('c-kept', 'First open', '');
+    else mark('c-kept', `${state.photos.length} of ${lastCount}`, state.photos.length >= lastCount ? 'yes' : 'no');
+    if (opens <= 1) setStatus('persist-status', 'First open. Take a few photos, then force close and reopen from the icon.');
+    else if (state.photos.length >= lastCount && lastCount > 0) setStatus('persist-status', `Passed: opened ${opens} times, all ${lastCount} photos and ${state.lines.length} lines still here.`, 'ok');
+    else if (lastCount > 0) setStatus('persist-status', `Failed: ${lastCount} photos were here last time, ${state.photos.length} now.`, 'bad');
+    else setStatus('persist-status', `Opened ${opens} times. Take photos, then force close and reopen.`);
+  }
+
+  async function addLine(name) {
+    const n = state.lines.filter((l) => l.name.startsWith(name)).length;
+    const l = { id: uid(), name: n ? `${name} ${n + 1}` : name, photoIds: [] };
+    state.lines.push(l); await put('lines', l); render();
+  }
+  async function toggleAttach(pid) {
+    const l = state.lines.find((x) => x.id === state.attachTo);
+    if (!l) return;
+    l.photoIds = l.photoIds.includes(pid) ? l.photoIds.filter((x) => x !== pid) : l.photoIds.concat(pid);
+    await put('lines', l); render();
+  }
+
+  // ---------- Viewer: Fit, 2x, actual size ----------
+  function openViewer(p) { $('viewer-img').src = urlFor(p, 'full'); state.zoom = 0; state.viewing = p; setZoom(); $('viewer').hidden = false; }
+  function setZoom() {
+    const p = state.viewing, img = $('viewer-img');
+    const w = img.parentElement.clientWidth || window.innerWidth;
+    const target = [null, w * 2, p.w][state.zoom];
+    if (target == null) { img.className = 'fit'; img.style.width = ''; } else { img.className = ''; img.style.width = Math.round(target) + 'px'; }
+    $('viewer-zoom').textContent = state.zoom === 0 ? 'Zoom 2×' : state.zoom === 1 ? 'Actual size' : 'Fit';
+    $('viewer-info').textContent = `${p.w}×${p.h} · ${fmtKB(p.bytes)} · ${['Fit', '2×', 'Actual size'][state.zoom]}`;
+  }
+  const step = () => { if (!state.viewing) return; state.zoom = (state.zoom + 1) % 3; setZoom(); };
+  $('viewer-zoom').onclick = step; $('viewer-img').onclick = step;
+  $('viewer-close').onclick = () => { $('viewer').hidden = true; state.viewing = null; };
+
+  // ---------- Heat log ----------
+  document.querySelectorAll('[data-heat]').forEach((b) => {
+    b.onclick = async () => {
+      const e = { id: uid(), t: Date.now(), kind: b.dataset.heat, battery: $('i-batt').value, conditions: $('i-temp').value.trim(), photos: state.photos.length };
+      state.log.push(e); await put('log', e); render();
+    };
+  });
+
+  // ---------- Results ----------
+  $('b-copy').onclick = async () => {
+    const ps = state.photos;
+    const by = (m) => ps.filter((p) => p.mode === m);
+    const avg = (arr, f) => (arr.length ? Math.round(arr.reduce((a, p) => a + f(p), 0) / arr.length) : 0);
+    const lines = [
+      'FIRST MATE PHOTO TEST (standalone)',
+      `Saved: ${new Date().toISOString()}`,
+      `Device: ${$('i-device').value.trim() || '(not entered)'}`,
+      `Notes: ${$('i-notes').value.trim() || '(none)'}`,
+      `Home screen: ${standalone ? 'yes' : 'no'} · Offline ready: ${navigator.serviceWorker && navigator.serviceWorker.controller ? 'yes' : 'no'} · Protected storage: ${state.meta.persisted ?? 'not asked'}`,
+      `Opens: ${state.meta.opens || 1} · Photos kept from last open: ${state.photos.length} of ${state.meta.lastCount || 0}`,
+      `Test minutes: ${state.meta.sessionStart ? Math.round((Date.now() - state.meta.sessionStart) / 60000) : 0}`,
+      `Photos: ${ps.length} (open camera ${by('live').length}, phone camera ${by('camera').length}, library ${by('library').length}) · unreadable ${state.meta.failedReads || 0}`,
+      `Open camera feed: ${state.meta.liveRes || 'not used'} · avg saved ${avg(by('live'), (p) => p.bytes / 1024)} KB · avg ${avg(by('live'), (p) => p.ms)} ms`,
+      `Phone camera: avg saved ${avg(by('camera'), (p) => p.bytes / 1024)} KB from ${avg(by('camera'), (p) => p.origBytes / 1024)} KB · avg ${avg(by('camera'), (p) => p.ms)} ms`,
+      `Library: avg saved ${avg(by('library'), (p) => p.bytes / 1024)} KB from ${avg(by('library'), (p) => p.origBytes / 1024)} KB · types ${Array.from(new Set(by('library').map((p) => p.origType))).join(', ') || '-'}`,
+      `Lines: ${state.lines.length} · attachments ${state.lines.reduce((a, l) => a + l.photoIds.length, 0)}`,
+      `Heat log: ${state.log.map((e) => `${clock(e.t)} ${e.kind}${e.battery ? ' ' + e.battery + '%' : ''}${e.conditions ? ' (' + e.conditions + ')' : ''} @${e.photos} photos`).join('; ') || '(none)'}`,
+      `Browser: ${navigator.userAgent}`
+    ];
+    const text = lines.join('\n');
+    const ta = $('results');
+    ta.value = text; ta.hidden = false;
+    try { await navigator.clipboard.writeText(text); $('b-copy').textContent = 'Copied'; }
+    catch (e) { ta.focus(); ta.select(); $('b-copy').textContent = 'Select and copy the text below'; }
+    setTimeout(() => { $('b-copy').textContent = 'Copy results'; }, 2500);
+  };
+
+  $('b-clear').onclick = async () => {
+    await Promise.all(['photos', 'lines', 'log', 'meta'].map(clearStore));
+    state.urls.forEach((u) => URL.revokeObjectURL(u)); state.urls.clear();
+    state.photos = []; state.lines = []; state.log = []; state.meta = {}; state.attachTo = null;
+    await setMeta('opens', 1);
+    setStatus('cap-status', 'No photos yet.');
+    document.querySelector('details').open = false;
+    render(); renderChecks();
+  };
+
+  // ---------- Wiring ----------
+  $('b-cam').onclick = () => $('i-cam').click();
+  $('b-lib').onclick = () => $('i-lib').click();
+  $('i-cam').onchange = async (e) => { await processFiles(e.target.files, 'camera'); e.target.value = ''; };
+  $('i-lib').onchange = async (e) => { await processFiles(e.target.files, 'library'); e.target.value = ''; };
+  // Remember how many photos existed, so the next open can tell whether any were lost.
+  const remember = () => { if (idb) put('meta', { key: 'lastCount', value: state.photos.length }).catch(() => {}); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) remember(); });
+  window.addEventListener('pagehide', remember);
+
+  function tick() {
+    if (!state.meta.sessionStart) { $('s-time').textContent = 'Not started'; return; }
+    const s = Math.floor((Date.now() - state.meta.sessionStart) / 1000);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+    $('s-time').textContent = h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`;
+  }
+
+  (async () => {
+    if ('serviceWorker' in navigator) { try { await navigator.serviceWorker.register('sw.js'); } catch (e) { /* offline launch unavailable */ } }
+    try {
+      idb = await openDb();
+      const [photos, lines, log, meta] = await Promise.all(['photos', 'lines', 'log', 'meta'].map(all));
+      state.photos = photos.sort((a, b) => a.createdAt - b.createdAt);
+      state.lines = lines; state.log = log.sort((a, b) => a.t - b.t);
+      meta.forEach((m) => { state.meta[m.key] = m.value; });
+      await setMeta('opens', (state.meta.opens || 0) + 1);
+      if (state.meta.persistAsked && navigator.storage && navigator.storage.persisted) { try { await setMeta('persisted', await navigator.storage.persisted()); } catch (e) { /* ignore */ } }
+    } catch (e) {
+      setStatus('persist-status', 'This browser blocked on-device storage (private browsing?). Photos will not survive here.', 'bad');
+    }
+    render(); renderChecks();
+    // The count to compare against next time is taken after this open's check.
+    remember();
+    setInterval(() => { tick(); remember(); }, 5000); tick();
+    setInterval(tick, 1000);
+  })();
+})();
+</script>
+</body>
+</html>
