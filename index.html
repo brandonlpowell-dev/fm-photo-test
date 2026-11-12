@@ -109,6 +109,7 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
       <div><span>Works offline</span><b id="c-offline">…</b></div>
       <div><span>Protected storage</span><b id="c-persist">…</b></div>
       <div><span>Photos kept from last time</span><b id="c-kept">…</b></div>
+      <div><span>Room for about</span><b id="c-room">…</b></div>
     </div>
     <p class="note" id="setup-help">To install: in Safari tap Share, then Add to Home Screen. Then open it from the new FM Test icon, not from Safari.</p>
   </section>
@@ -139,6 +140,26 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <h2><span class="n">3</span>Force close test</h2>
     <p class="note">With a few photos taken: swipe up and force close the app, then open it again from the home screen icon. Repeat in airplane mode, and after restarting the phone.</p>
     <div class="status" id="persist-status">Checking…</div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">3b</span>Storage limit test</h2>
+    <p class="note">Fills the tool with stand-in photos (about 1.3 MB each, not real pictures) until you stop, it reaches the amount you pick, or the phone refuses. Shows how many photos fit before a walk would hit a wall. Make sure the phone has spare space; remove the fill afterwards.</p>
+    <div class="row">
+      <label for="i-fill">Add up to
+        <select id="i-fill" style="font:inherit;font-size:16px;min-height:48px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:0 12px">
+          <option value="250">250 photos (about 330 MB)</option>
+          <option value="500" selected>500 photos (about 650 MB)</option>
+          <option value="1000">1,000 photos (about 1.3 GB)</option>
+        </select>
+      </label>
+    </div>
+    <div class="btns">
+      <button class="primary" id="b-fill">Start fill test</button>
+      <button id="b-stop" disabled>Stop</button>
+      <button id="b-unfill">Remove fill</button>
+    </div>
+    <div class="status" id="fill-status">Not run.</div>
   </section>
 
   <section class="card">
@@ -202,8 +223,12 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   // ---------- On-device storage ----------
   let idb;
   const openDb = () => new Promise((res, rej) => {
-    const r = indexedDB.open('fm-photo-test', 1);
-    r.onupgradeneeded = () => { const d = r.result; ['photos', 'lines', 'log'].forEach((s) => d.createObjectStore(s, { keyPath: 'id' })); d.createObjectStore('meta', { keyPath: 'key' }); };
+    const r = indexedDB.open('fm-photo-test', 2);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      ['photos', 'lines', 'log', 'fill'].forEach((s) => { if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' }); });
+      if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta', { keyPath: 'key' });
+    };
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
   });
@@ -351,6 +376,7 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 
   // ---------- Rendering ----------
   function render() {
+    updateRoom();
     const bytes = state.photos.reduce((a, p) => a + p.bytes, 0);
     $('s-photos').textContent = state.photos.length;
     $('s-mb').textContent = fmtMB(bytes);
@@ -404,6 +430,60 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
       r.append(t, s); log.appendChild(r);
     });
   }
+  // ---------- Storage room and fill test ----------
+  async function updateRoom() {
+    let text = 'Unknown';
+    try {
+      if (navigator.storage && navigator.storage.estimate) {
+        const e = await navigator.storage.estimate();
+        const free = Math.max(0, (e.quota || 0) - (e.usage || 0));
+        const per = state.photos.length ? state.photos.reduce((a, p) => a + p.bytes, 0) / state.photos.length : 1.3 * 1048576;
+        const n = Math.floor(free / per);
+        text = `${n.toLocaleString()} more photos (${fmtMB(e.usage || 0)} used of ${fmtMB(e.quota || 0)} allowed)`;
+      }
+    } catch (e) { /* unknown */ }
+    state.room = text;
+    $('c-room').textContent = text;
+  }
+  let fillStop = false;
+  async function countFill() { return tx('fill', 'readonly', (o) => o.count()); }
+  $('b-fill').onclick = async () => {
+    const target = parseInt($('i-fill').value, 10);
+    const size = 1363148;
+    const buf = new Uint8Array(size);
+    for (let i = 0; i < size; i += 65536) crypto.getRandomValues(buf.subarray(i, Math.min(size, i + 65536)));
+    fillStop = false;
+    $('b-fill').disabled = true; $('b-stop').disabled = false;
+    let added = 0, refused = '';
+    const t0 = performance.now();
+    const before = await countFill();
+    while (added < target && !fillStop) {
+      try {
+        await put('fill', { id: uid(), blob: new Blob([buf], { type: 'image/jpeg' }) });
+        added++;
+        if (added % 10 === 0) setStatus('fill-status', `Added ${added} of ${target} stand-in photos (${fmtMB(added * size)})…`);
+      } catch (e) {
+        refused = e && e.name ? e.name : 'refused';
+        break;
+      }
+    }
+    const secs = Math.round((performance.now() - t0) / 1000);
+    const total = before + added;
+    const result = refused
+      ? `phone refused after ${total} stand-in photos (${fmtMB(total * size)}): ${refused}`
+      : `${total} stand-in photos (${fmtMB(total * size)}) stored with no problem${fillStop ? ' (stopped)' : ''}`;
+    await setMeta('fillResult', `${result}, ${secs}s`);
+    setStatus('fill-status', `${result[0].toUpperCase()}${result.slice(1)}. Took ${secs} seconds. Tap Remove fill when done.`, refused ? 'bad' : 'ok');
+    $('b-fill').disabled = false; $('b-stop').disabled = true;
+    updateRoom();
+  };
+  $('b-stop').onclick = () => { fillStop = true; };
+  $('b-unfill').onclick = async () => {
+    await clearStore('fill');
+    setStatus('fill-status', 'Fill removed. Your real test photos were not touched.', 'ok');
+    updateRoom();
+  };
+
   function renderChecks() {
     const mark = (el, text, cls) => { $(el).textContent = text; $(el).className = cls; };
     mark('c-standalone', standalone ? 'Yes' : 'No — open from the icon', standalone ? 'yes' : 'no');
@@ -469,6 +549,7 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
       `Home screen: ${standalone ? 'yes' : 'no'} · Offline ready: ${navigator.serviceWorker && navigator.serviceWorker.controller ? 'yes' : 'no'} · Protected storage: ${state.meta.persisted ?? 'not asked'}`,
       `Opens: ${state.meta.opens || 1} · Photos kept from last open: ${state.photos.length} of ${state.meta.lastCount || 0}`,
       `Test minutes: ${state.meta.sessionStart ? Math.round((Date.now() - state.meta.sessionStart) / 60000) : 0}`,
+      `Storage: ${state.room || 'unknown'} · Fill test: ${state.meta.fillResult || 'not run'}`,
       `Photos: ${ps.length} (open camera ${by('live').length}, phone camera ${by('camera').length}, library ${by('library').length}) · unreadable ${state.meta.failedReads || 0}`,
       `Open camera feed: ${state.meta.liveRes || 'not used'} · avg saved ${avg(by('live'), (p) => p.bytes / 1024)} KB · avg ${avg(by('live'), (p) => p.ms)} ms`,
       `Phone camera: avg saved ${avg(by('camera'), (p) => p.bytes / 1024)} KB from ${avg(by('camera'), (p) => p.origBytes / 1024)} KB · avg ${avg(by('camera'), (p) => p.ms)} ms`,
@@ -503,13 +584,13 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   };
 
   $('b-clear').onclick = async () => {
-    await Promise.all(['photos', 'lines', 'log', 'meta'].map(clearStore));
+    await Promise.all(['photos', 'lines', 'log', 'meta', 'fill'].map(clearStore));
     state.urls.forEach((u) => URL.revokeObjectURL(u)); state.urls.clear();
     state.photos = []; state.lines = []; state.log = []; state.meta = {}; state.attachTo = null;
     await setMeta('opens', 1);
     setStatus('cap-status', 'No photos yet.');
     document.querySelector('details').open = false;
-    render(); renderChecks();
+    render(); renderChecks(); updateRoom();
   };
 
   // ---------- Wiring ----------
@@ -542,7 +623,7 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     } catch (e) {
       setStatus('persist-status', 'This browser blocked on-device storage (private browsing?). Photos will not survive here.', 'bad');
     }
-    render(); renderChecks();
+    render(); renderChecks(); updateRoom();
     // The count to compare against next time is taken after this open's check.
     remember();
     setInterval(() => { tick(); remember(); }, 5000); tick();
