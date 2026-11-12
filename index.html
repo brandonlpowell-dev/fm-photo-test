@@ -185,8 +185,8 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <h2><span class="n">5</span>Send results</h2>
     <label for="i-device">Device<input type="text" id="i-device" placeholder="e.g. iPhone 11, 2 years old"></label>
     <label for="i-notes">Notes<input type="text" id="i-notes" placeholder="Photo quality, anything odd"></label>
-    <div class="btns"><button class="primary" id="b-share">Send results</button><button id="b-copy">Copy results</button></div>
-    <p class="note">Send results opens your phone's share menu: pick the Claude app, Messages or Mail. Copy results copies the text to paste into your chat with Claude. No photos are included.</p>
+    <div class="btns"><button class="primary" id="b-copy">Copy results</button></div>
+    <p class="note">Copies a text summary (no photos) to paste into your chat with Claude. The full text also appears below for a screenshot.</p>
     <textarea id="results" readonly hidden aria-label="Results summary"></textarea>
     <details>
       <summary>Start over</summary>
@@ -567,15 +567,6 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     ta.value = text; ta.hidden = false;
     ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px';
   }
-  $('b-share').onclick = async () => {
-    const text = buildResults();
-    showResults(text);
-    if (navigator.share) {
-      try { await navigator.share({ title: 'First Mate photo test results', text }); return; }
-      catch (e) { if (e && e.name === 'AbortError') return; }
-    }
-    $('b-copy').click();
-  };
   $('b-copy').onclick = async () => {
     const text = buildResults();
     showResults(text);
