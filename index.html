@@ -65,7 +65,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .card > label { flex: none; }
 label { font-size: .9rem; color: var(--muted); display: flex; flex-direction: column; gap: 4px; flex: 1 1 140px; }
 input[type=text], input[type=number] { font: inherit; font-size: 16px; min-height: 48px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); width: 100%; }
-textarea { font-family: var(--font-data); font-size: 12px; width: 100%; min-height: 160px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 8px; }
+textarea { font-family: var(--font-data); font-size: 12px; width: 100%; min-height: 160px; resize: none; overflow: hidden; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 8px; }
 .log { display: flex; flex-direction: column; gap: 4px; font-size: .9rem; }
 .log div { display: flex; gap: 10px; }
 .log time { font-family: var(--font-data); color: var(--muted); font-size: .82rem; min-width: 5.5em; }
@@ -162,8 +162,8 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <h2><span class="n">5</span>Send results</h2>
     <label for="i-device">Device<input type="text" id="i-device" placeholder="e.g. iPhone 11, 2 years old"></label>
     <label for="i-notes">Notes<input type="text" id="i-notes" placeholder="Photo quality, anything odd"></label>
-    <div class="btns"><button class="primary" id="b-copy">Copy results</button></div>
-    <p class="note">Copies a text summary (no photos). Paste it into your chat with Claude.</p>
+    <div class="btns"><button class="primary" id="b-share">Send results</button><button id="b-copy">Copy results</button></div>
+    <p class="note">Send results opens your phone's share menu: pick the Claude app, Messages or Mail. Copy results copies the text to paste into your chat with Claude. No photos are included.</p>
     <textarea id="results" readonly hidden aria-label="Results summary"></textarea>
     <details>
       <summary>Start over</summary>
@@ -457,7 +457,7 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   });
 
   // ---------- Results ----------
-  $('b-copy').onclick = async () => {
+  function buildResults() {
     const ps = state.photos;
     const by = (m) => ps.filter((p) => p.mode === m);
     const avg = (arr, f) => (arr.length ? Math.round(arr.reduce((a, p) => a + f(p), 0) / arr.length) : 0);
@@ -477,9 +477,26 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
       `Heat log: ${state.log.map((e) => `${clock(e.t)} ${e.kind}${e.battery ? ' ' + e.battery + '%' : ''}${e.conditions ? ' (' + e.conditions + ')' : ''} @${e.photos} photos`).join('; ') || '(none)'}`,
       `Browser: ${navigator.userAgent}`
     ];
-    const text = lines.join('\n');
+    return lines.join('\n');
+  }
+  function showResults(text) {
     const ta = $('results');
     ta.value = text; ta.hidden = false;
+    ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px';
+  }
+  $('b-share').onclick = async () => {
+    const text = buildResults();
+    showResults(text);
+    if (navigator.share) {
+      try { await navigator.share({ title: 'First Mate photo test results', text }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    $('b-copy').click();
+  };
+  $('b-copy').onclick = async () => {
+    const text = buildResults();
+    showResults(text);
+    const ta = $('results');
     try { await navigator.clipboard.writeText(text); $('b-copy').textContent = 'Copied'; }
     catch (e) { ta.focus(); ta.select(); $('b-copy').textContent = 'Select and copy the text below'; }
     setTimeout(() => { $('b-copy').textContent = 'Copy results'; }, 2500);
